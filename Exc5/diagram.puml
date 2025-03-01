@@ -1,0 +1,29 @@
+@startuml
+!include <C4/C4_Component>
+
+actor "Users" as Users
+participant "MES API" as API
+participant "Redis" as Redis
+participant "DataBase" as DataBase
+
+== Чтение данных (Read-Through) ==
+Users      -> API: Получить список заказов
+API        -> Redis: Запрос списка заказов из кэша (Read-Through)
+alt Redis to be
+  Redis    --> API: Вернуть список заказов из кэша
+else Redis empty
+  API      -> DataBase: Запрос список заказов из базы
+  DataBase --> API: Вернуть список заказов из базы
+  API      -> Redis: Записать список заказов в кэш (write-through)
+end
+API -> Users: Вернуть список заказов (read-through)
+
+== Обновить статус заказа (Write-Through) ==
+Users    -> API: Обновить статус заказа
+API      -> DataBase: Запрос на обновление статуса заказа в базе
+DataBase --> API: Подтвердить обновление
+API      -> Redis: Обновить статус закза в кеше (write-through)
+Redis    --> API: Подтвердить обновление статуса заказа
+API      -> Users: Подтвердить завершение обновления
+
+@enduml
